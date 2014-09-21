@@ -15,8 +15,7 @@ import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import Network.HTTP.Client
-import Data.List (sortBy)
-import Data.Ord (comparing)
+import Data.List (sort, intercalate)
 import Text.Printf (printf, PrintfArg)
 import Control.Error
 import Data.Time.Format
@@ -24,7 +23,6 @@ import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import System.Locale (defaultTimeLocale)
 import Options.Applicative
-import Data.List (intercalate)
 import System.Exit (exitFailure)
 import System.Process (spawnProcess, waitForProcess)
 import Data.Maybe (fromJust)
@@ -46,7 +44,6 @@ tempUTCTimeFromString s =
   case parseTime defaultTimeLocale "%s%Q" s of
      Nothing -> fail $ "couldn't parse '" ++ s ++ "' as a unix time!"
      Just t  -> pure $ TempUTCTime t
-
 
 instance FromJSON TempUTCTime where
   parseJSON (Number n) = pure $ TempUTCTime $ posixSecondsToUTCTime $ realToFrac n
@@ -75,7 +72,7 @@ data Post a = Post { post_score :: Double
                    } deriving (Eq, Show, Read)
 
 instance (Ord a) => Ord (Post a) where
-  p `compare` q = post_score p `compare` post_score q
+  p `compare` q = post_score q `compare` post_score p
 
 instance (FromJSON a, Integral a) => FromJSON (RedditResponse a) where
   parseJSON (Object v) = RedditResponse <$>
@@ -203,10 +200,9 @@ main = do
     let maxAge = (-(fromIntegral maxAge') * oneDay) `addUTCTime` now
         ytf = if youtube then id else filter (not.isYoutube.post_url)
         gfy = if nogfycat then id else map (\p -> p { post_url = toGfycat (post_url p) })
-        postList = take count $ reverse $ sortBy (comparing post_score) $
-                   gfy $ ytf $ filter (after maxAge) $ posts
     when (isJust open) $ scriptIO $ do
       handles <- mapM (spawnProcess (fromJust open) . pure . T.unpack . post_url) postList
+        postList = take count $ sort $ gfy $ ytf $ filter (after maxAge) $ posts
       mapM_ waitForProcess handles
 
     return $ map displayPost $ postList
