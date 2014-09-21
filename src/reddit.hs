@@ -231,8 +231,8 @@ data Opts = Opts { opt_mode         :: Ranking
 opts :: ParserInfo Opts
 opts = info (helper <*> parseOpts)
        (fullDesc
-        <> progDesc ("Fetch top links from a bunch of subreddits.  If you specify no subreddits on the command line, these default subreddits will be used: " ++ intercalate ", " defaultReddits)
-        <> header "reddit")
+        <> progDesc ("The default behavior is to normalize scores by subreddit (rather than the default multi-reddit behavior of using absolute upvote count).  The default behavior is to output a fixed number of posts (see '--count').\nIf you specify no subreddits on the command line, these default subreddits will be used: " ++ intercalate ", " defaultReddits)
+        <> header "reddit: fetch top links from multiple subreddits")
 
 parseOpts :: Parser Opts
 parseOpts = Opts <$> flag Normalized Absolute
