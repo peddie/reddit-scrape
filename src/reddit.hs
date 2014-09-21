@@ -239,13 +239,15 @@ parseOpts = Opts <$> flag Normalized Absolute
             ( long "count"
               <> short 'c'
               <> metavar "COUNT"
-              <> help "Output the top COUNT links (defaults to 20)"
+              <> help "Output the top COUNT links"
+              <> showDefault
               <> value 20)
             <*> option auto
             ( long "max-age"
               <> short 'a'
-              <> help "Ignore posts older than AGE days (defaults to 1)"
+              <> help "Ignore posts older than AGE days"
               <> metavar "AGE"
+              <> showDefault
               <> value 1)
             <*> switch
             ( long "open"
@@ -255,7 +257,8 @@ parseOpts = Opts <$> flag Normalized Absolute
             ( long "command"
               <> short 'C'
               <> metavar "COMMAND"
-              <> help "Specify the command to call on each URL when '--open' is passed (defaults to 'x-www-browser')"
+              <> help "Specify the command to call on each URL when '--open' is passed"
+              <> showDefault
               <> value "x-www-browser")
             <*> switch
             ( long "youtube"
