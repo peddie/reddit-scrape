@@ -25,7 +25,6 @@ import System.Locale (defaultTimeLocale)
 import Options.Applicative
 import System.Exit (exitFailure)
 import System.Process (spawnProcess, waitForProcess)
-import Data.Maybe (fromJust)
 
 type RedditQuery a = EitherT String IO a
 
@@ -187,7 +186,7 @@ oneDay = 86400
 main :: IO ()
 -- main = putStrLn "butts"
 main = do
-  (Opts mode count maxAge' open youtube nogfycat quiet reddits') <- execParser opts
+  (Opts mode count maxAge' open openCmd youtube nogfycat quiet reddits') <- execParser opts
   let reddits = if null reddits' then defaultReddits else reddits'
   res <- runEitherT $ do
     now <- scriptIO $ getCurrentTime
@@ -200,9 +199,9 @@ main = do
     let maxAge = (-(fromIntegral maxAge') * oneDay) `addUTCTime` now
         ytf = if youtube then id else filter (not.isYoutube.post_url)
         gfy = if nogfycat then id else map (\p -> p { post_url = toGfycat (post_url p) })
-    when (isJust open) $ scriptIO $ do
-      handles <- mapM (spawnProcess (fromJust open) . pure . T.unpack . post_url) postList
         postList = take count $ sort $ gfy $ ytf $ filter (after maxAge) $ posts
+    when open $ scriptIO $ do
+      handles <- mapM (spawnProcess openCmd . pure . T.unpack . post_url) postList
       mapM_ waitForProcess handles
 
     return $ map displayPost $ postList
@@ -214,14 +213,15 @@ main = do
 
 data Ranking = Normalized | Absolute
 
-data Opts = Opts { opt_absolute :: Ranking
-                 , opt_count    :: Int
-                 , opt_max_age  :: Int
-                 , opt_open     :: Maybe String
-                 , opt_youtube  :: Bool
-                 , opt_gfycat   :: Bool
-                 , opt_quiet    :: Bool
-                 , opt_reddits  :: [String]
+data Opts = Opts { opt_absolute     :: Ranking
+                 , opt_count        :: Int
+                 , opt_max_age      :: Int
+                 , opt_open         :: Bool
+                 , opt_open_command :: String
+                 , opt_youtube      :: Bool
+                 , opt_gfycat       :: Bool
+                 , opt_quiet        :: Bool
+                 , opt_reddits      :: [String]
                  }
 
 opts :: ParserInfo Opts
@@ -247,20 +247,24 @@ parseOpts = Opts <$> flag Normalized Absolute
               <> help "Ignore posts older than AGE days (defaults to 1)"
               <> metavar "AGE"
               <> value 1)
-            <*> (optional $ strOption
-                 ( long "open"
-                   <> short 'o'
-                   <> metavar "COMMAND"
-                   <> help "Call 'COMMAND <url>' on each url"
-                   <> value "/usr/bin/x-www-browser"))
+            <*> switch
+            ( long "open"
+              <> short 'o'
+              <> help "Open each link with a command (use --command)")
+            <*> strOption
+            ( long "command"
+              <> short 'C'
+              <> metavar "COMMAND"
+              <> help "Specify the command to call on each URL when '--open' is passed (defaults to 'x-www-browser')"
+              <> value "x-www-browser")
             <*> switch
             ( long "youtube"
               <> short 'y'
-              <> help "Include links to youtube videos")
+              <> help "Include links to youtube videos (default is to remove)")
             <*> switch
             ( long "no-gfycat"
               <> short 'G'
-              <> help "Don't translate all gifs to gfycat webm videos")
+              <> help "Don't translate all gifs to gfycat webm videos (default is to translate)")
             <*> switch
             ( long "quiet"
               <> short 'q'
