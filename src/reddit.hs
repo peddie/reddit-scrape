@@ -184,7 +184,6 @@ oneDay :: Num a => a
 oneDay = 86400
 
 main :: IO ()
--- main = putStrLn "butts"
 main = do
   (Opts mode count maxAge' open openCmd youtube nogfycat quiet reddits') <- execParser opts
   let reddits = if null reddits' then defaultReddits else reddits'
@@ -213,13 +212,13 @@ main = do
 
 data Ranking = Normalized | Absolute
 
-data Opts = Opts { opt_absolute     :: Ranking
+data Opts = Opts { opt_mode         :: Ranking
                  , opt_count        :: Int
                  , opt_max_age      :: Int
                  , opt_open         :: Bool
                  , opt_open_command :: String
                  , opt_youtube      :: Bool
-                 , opt_gfycat       :: Bool
+                 , opt_nogfycat     :: Bool
                  , opt_quiet        :: Bool
                  , opt_reddits      :: [String]
                  }
@@ -239,7 +238,7 @@ parseOpts = Opts <$> flag Normalized Absolute
             ( long "count"
               <> short 'c'
               <> metavar "COUNT"
-              <> help "Output the top COUNT links"
+              <> help "Output the top COUNT posts"
               <> showDefault
               <> value 20)
             <*> option auto
