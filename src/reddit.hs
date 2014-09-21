@@ -25,6 +25,7 @@ import System.Locale (defaultTimeLocale)
 import Options.Applicative
 import System.Exit (exitFailure)
 import System.Process (spawnProcess, waitForProcess)
+import Data.Maybe (fromJust)
 
 type RedditQuery a = EitherT String IO a
 
@@ -185,22 +186,25 @@ oneDay = 86400
 
 main :: IO ()
 main = do
-  (Opts mode count maxAge' open openCmd youtube nogfycat quiet reddits') <- execParser opts
-  let reddits = if null reddits' then defaultReddits else reddits'
+  Opts{..} <- execParser opts
+  let reddits = if null opt_reddits then defaultReddits else opt_reddits
   res <- runEitherT $ do
     now <- scriptIO $ getCurrentTime
     rawPosts <- mapM (getRedditPosts "day" 50) reddits
-    posts <- case mode of
+    posts <- case opt_mode of
               Normalized -> do
                 stats <- mapM (getRedditStats "month" 500) reddits
                 return $ concat $ zipWith (normalizeReddit byMean) stats rawPosts
               Absolute   -> return $ concat rawPosts
-    let maxAge = (-(fromIntegral maxAge') * oneDay) `addUTCTime` now
-        ytf = if youtube then id else filter (not.isYoutube.post_url)
-        gfy = if nogfycat then id else map (\p -> p { post_url = toGfycat (post_url p) })
-        postList = take count $ sort $ gfy $ ytf $ filter (after maxAge) $ posts
-    when open $ scriptIO $ do
-      handles <- mapM (spawnProcess openCmd . pure . T.unpack . post_url) postList
+    let maxAge = (-(fromIntegral opt_max_age) * oneDay) `addUTCTime` now
+        ytf = if opt_youtube then id else filter (not.isYoutube.post_url)
+        gfy = if opt_nogfycat then id else map (\p -> p { post_url = toGfycat (post_url p) })
+        choose = if (isJust opt_threshold)
+                 then takeWhile (\p -> post_score p > fromJust opt_threshold)
+                 else take opt_count
+        postList = choose $ sort $ gfy $ ytf $ filter (after maxAge) $ posts
+    when opt_open $ scriptIO $ do
+      handles <- mapM (spawnProcess opt_open_command . pure . T.unpack . post_url) postList
       mapM_ waitForProcess handles
 
     return $ map displayPost $ postList
@@ -208,12 +212,13 @@ main = do
    Left e -> do
      putStrLn $ "Error: " ++ e
      exitFailure
-   Right m -> unless quiet $ T.putStrLn $ T.unlines m
+   Right m -> unless opt_quiet $ T.putStrLn $ T.unlines m
 
 data Ranking = Normalized | Absolute
 
 data Opts = Opts { opt_mode         :: Ranking
                  , opt_count        :: Int
+                 , opt_threshold    :: Maybe Double
                  , opt_max_age      :: Int
                  , opt_open         :: Bool
                  , opt_open_command :: String
@@ -241,6 +246,12 @@ parseOpts = Opts <$> flag Normalized Absolute
               <> help "Output the top COUNT posts"
               <> showDefault
               <> value 20)
+            <*> optional
+            (option auto
+             ( long "threshold"
+               <> short 't'
+               <> help "Output only posts with scores higher than THRESHOLD"
+               <> metavar "THRESHOLD"))
             <*> option auto
             ( long "max-age"
               <> short 'a'
