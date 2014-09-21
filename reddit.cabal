@@ -1,4 +1,4 @@
-name:                reddit
+name:                reddit-scrape
 version:             0.1.0.0
 synopsis:            get shit from reddit
 
@@ -13,9 +13,9 @@ build-type:          Simple
 
 cabal-version:       >=1.10
 
-executable reddit
+executable reddit-scrape
   ghc-options: -threaded -Wall -O2 -dynamic
-  main-is:             reddit.hs
+  main-is:             reddit-scrape.hs
   other-modules:
   -- other-extensions:
   build-depends:       base >=4.7 && <4.8
