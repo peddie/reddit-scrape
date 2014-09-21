@@ -14,7 +14,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable reddit-scrape
-  ghc-options: -threaded -Wall -O2 -dynamic
+  ghc-options: -threaded -Wall -O2
   main-is:             reddit-scrape.hs
   other-modules:
   -- other-extensions:
